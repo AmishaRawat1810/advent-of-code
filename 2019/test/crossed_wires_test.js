@@ -1,9 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { moveOn } from "../src/crossed_wires.js";
+import { crossedWires } from "../src/crossed_wires.js";
 
-Deno.test("Test for moves", () => {
-  assertEquals(moveOn("R7", 0, 0), { dx: 7, dy: 0 });
-  assertEquals(moveOn("L", 0, 0), { dx: -1, dy: 0 });
-  assertEquals(moveOn("U", 0, 0), { dx: 0, dy: 1 });
-  assertEquals(moveOn("D", 0, 0), { dx: 0, dy: -1 });
+Deno.test("Test for the input file", () => {
+  const input = Deno.readTextFileSync("./data/input_crossed_wires.txt");
+  assertEquals(crossedWires(input), 48262);
 });
