@@ -15,22 +15,19 @@ const lessThan = (arg1, arg2) => arg1 < arg2 ? 1 : 0;
 const equals = (arg1, arg2) => arg1 === arg2 ? 1 : 0;
 
 const binaryInstruction = {
-  1: { operation: sumOf, moveBy: 4 },
-  2: { operation: productOf, moveBy: 4 },
-  7: { operation: lessThan, moveBy: 4 },
-  8: { operation: equals, moveBy: 4 },
+  1: { fn: sumOf, moveBy: 4 },
+  2: { fn: productOf, moveBy: 4 },
+  7: { fn: lessThan, moveBy: 4 },
+  8: { fn: equals, moveBy: 4 },
 };
 
-const getInput = () => 5;
+const getInput = (_memory, _token, amplifierInfo) => amplifierInfo.shift();
 
-const putOutput = (memory, token) => {
-  console.log(memory[memory[token]]);
-  return memory[memory[token]];
-};
+const putOutput = (memory, token) => memory[memory[token]];
 
 const unaryInstruction = {
-  3: { operation: getInput, moveBy: 2 },
-  4: { operation: putOutput, moveBy: 2 },
+  3: { fn: getInput, moveBy: 2 },
+  4: { fn: putOutput, moveBy: 2 },
 };
 
 const jumpIfTrue = (arg1, arg2) => arg1 !== 0 ? arg2 : null;
@@ -68,31 +65,43 @@ const selectInstruction = {
   7: { type: "binary", moveBy: 4 },
   8: { type: "binary", moveBy: 4 },
 };
-
-export const intCodeComp = (input) => {
-  const memory = [...input];
-  let cmdPointer = 0;
+export const intCodeComp = (memory, amplifierInfo, cmdPointer = 0) => {
   let i = 0;
+
   while (cmdPointer < memory.length) {
     ++i;
     const { opcode, arg1Mode, arg2Mode } = parseInstruction(memory, cmdPointer);
 
     if (opcode === 99) {
-      return;
+      return { memory, cmdPointer, output: undefined, halted: true };
     }
+
     const arg1 = parameterMode[arg1Mode](memory, cmdPointer + 1);
     const arg2 = parameterMode[arg2Mode](memory, cmdPointer + 2);
     const instruction = selectInstruction[opcode];
 
     if (instruction.type === "binary") {
       const resultIndex = memory[cmdPointer + 3];
-      memory[resultIndex] = binaryInstruction[opcode].operation(arg1, arg2);
+      memory[resultIndex] = binaryInstruction[opcode].fn(arg1, arg2);
+      cmdPointer += instruction.moveBy;
     }
 
     if (instruction.type === "unary") {
-      const output = unaryInstruction[opcode].operation(memory, cmdPointer + 1);
       const address = memory[cmdPointer + 1];
+      const output = unaryInstruction[opcode].fn(
+        memory,
+        cmdPointer + 1,
+        amplifierInfo,
+      );
+
+      if (opcode === 4) {
+        dbg(output);
+        cmdPointer += instruction.moveBy;
+        return { memory, cmdPointer, output, halted: false };
+      }
+
       memory[address] = output;
+      cmdPointer += instruction.moveBy;
     }
 
     if (instruction.type === "jump") {
@@ -103,14 +112,6 @@ export const intCodeComp = (input) => {
         cmdPointer += 3;
       }
     }
-
-    cmdPointer += instruction.moveBy;
+    //
   }
 };
-
-const parseInput = (input) => input.split(",").map(Number);
-const testInput = Deno.readTextFileSync(
-  "./data/input_sunny_with_a_chance.txt",
-);
-const input = parseInput(testInput);
-console.log(intCodeComp(input));
