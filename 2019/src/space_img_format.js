@@ -17,7 +17,7 @@ const fillPixel = (pixelGrid, values) => {
   let valueIndex = -1;
   const result = pixelGrid.map((pixelRow) =>
     pixelRow.map((row) =>
-      row.map((pixel) => {
+      row.map((_) => {
         valueIndex++;
         return values[valueIndex];
       })
