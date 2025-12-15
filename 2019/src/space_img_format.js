@@ -1,29 +1,67 @@
-const array = [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [0, 1, 2]]];
-// console.log(array.map((el) => el.join(",")).join("\n"));
+import { chunk } from "@std/collections/chunk";
 
-//pixels : wide: 3, tall: 2
+const distributeIntoLayers = (width, height, values) =>
+  chunk(values, width * height);
 
-const formPixel = (width, height) =>
-  Array.from(
-    { length: height },
-    (x) =>
-      Array.from({ length: height }, (x) =>
-        Array.from({ length: width }, (x) => "1")),
-  );
+const fewestZero = (layers) => {
+  let minZeroCount = Infinity;
+  let layerWithFewestZero = 0;
 
-const pixelGrid = formPixel(3, 2);
+  layers.forEach((row, rowIndex) => {
+    const zeroCount = row.filter((num) => num === "0").length;
+    if (zeroCount < minZeroCount) {
+      minZeroCount = zeroCount;
+      layerWithFewestZero = rowIndex;
+    }
+  });
+  return layerWithFewestZero;
+};
 
-const fillPixel = (pixelGrid, values) => {
-  let valueIndex = -1;
-  const result = pixelGrid.map((pixelRow) =>
-    pixelRow.map((row) =>
-      row.map((_) => {
-        valueIndex++;
-        return values[valueIndex];
-      })
-    )
-  );
+const frequencyOf = (layer) =>
+  layer.reduce((acc, color) => {
+    acc[color] = (acc[color] || 0) + 1;
+    return acc;
+  }, {});
+
+const productOf1And2 = (layerValues) => layerValues["1"] * layerValues["2"];
+
+const main = (input, width, height) => {
+  const layers = distributeIntoLayers(width, height, input);
+  const layerWithFewestZero = fewestZero(layers);
+  const frequencyGrid = frequencyOf(layers[layerWithFewestZero]);
+  return productOf1And2(frequencyGrid);
+};
+
+const input = Deno.readTextFileSync("./data/input_space_img_format.txt");
+
+//part - 2
+const getPixels = (layers) => {
+  const len = layers[0].length;
+  const result = [];
+  for (let index = 0; index < len; index++) {
+    for (const layer of layers) {
+      const pixel = layer[index];
+      if (pixel !== "2") {
+        result.push(pixel === "0" ? "⬛️" : "⬜️");
+        break;
+      }
+    }
+  }
   return result;
 };
 
-console.log(fillPixel(pixelGrid, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2]));
+const formGrid = (width, image) => {
+  const row = chunk(image, width);
+  return row.map((r) => r.join("")).join("\n");
+};
+
+const main2 = (input, width, height) => {
+  const layers = distributeIntoLayers(width, height, input);
+  const image = getPixels(layers);
+  console.log(image);
+
+  return formGrid(width, image);
+};
+
+const demo = [0, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 2, 0, 0, 0, 0].map(String);
+console.log(main2(input, 25, 6));
