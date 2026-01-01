@@ -65,6 +65,7 @@ const selectInstruction = {
   7: { type: "binary", moveBy: 4 },
   8: { type: "binary", moveBy: 4 },
 };
+
 export const intCodeComp = (memory, amplifierInfo, cmdPointer = 0) => {
   let i = 0;
 
@@ -112,6 +113,5 @@ export const intCodeComp = (memory, amplifierInfo, cmdPointer = 0) => {
         cmdPointer += 3;
       }
     }
-    //
   }
 };

@@ -1,111 +1,85 @@
-const dbg = (x, message = "", type = false, toStop = false) => {
-  if (toStop) {
-    prompt("");
-  }
-  if (type) {
-    message = `${message} | ${typeof x} `;
-  }
-  console.log(message, " : ", x);
-  return x;
+const createVM = (program) => ({
+  memory: [...program],
+  ptr: 0,
+  isHalted: false,
+});
+
+const getElement = (memory, address) => memory[address] || 0;
+
+const getWriteAddress = (vm, offset) => getElement(vm.memory, vm.ptr + offset);
+
+const getArg = (vm, offset, mode) => {
+  const token = getElement(vm.memory, vm.ptr + offset);
+  if (mode === 1) return token;
+  if (mode === 0) return getElement(memory, token);
 };
 
-const sumOf = (arg1, arg2) => arg1 + arg2;
-const productOf = (arg1, arg2) => arg1 * arg2;
-const lessThan = (arg1, arg2) => arg1 < arg2 ? 1 : 0;
-const equals = (arg1, arg2) => arg1 === arg2 ? 1 : 0;
-
-const binaryInstruction = {
-  1: { operation: sumOf, moveBy: 4 },
-  2: { operation: productOf, moveBy: 4 },
-  7: { operation: lessThan, moveBy: 4 },
-  8: { operation: equals, moveBy: 4 },
+const ops = {
+  1: (arg1, arg2) => arg1 + arg2,
+  2: (arg1, arg2) => arg1 * arg2,
+  7: (arg1, arg2) => arg1 < arg2 ? 1 : 0,
+  8: (arg1, arg2) => arg1 === arg2 ? 1 : 0,
 };
 
-const getInput = () => 5;
-
-const putOutput = (memory, token) => {
-  console.log(memory[memory[token]]);
-  return memory[memory[token]];
+const handlers = {
+  binary: (vm, { opcode, mode1, mode2 }) => {
+    const arg1 = getArg(vm.memory, 1, mode1);
+    const arg2 = getArg(vm.memory, 2, mode2);
+    const writeAddr = getWriteAddress(vm.memory, 3);
+    vm.memory[writeAddr] = ops[opcode](arg1, arg2);
+    vm.ptr += 4;
+  },
+  jump: (vm, { opcode, mode1, mode2 }) => {
+    const arg1 = getArg(vm.memory, 1, mode1);
+    const arg2 = getArg(vm.memory, 2, mode2);
+    const shouldJump = opcode === 5 ? arg1 !== 0 : arg1 === 0;
+    vm.ptr = shouldJump ? arg2 : vm.ptr += 3;
+  },
+  input: (vm) => {
+    const dest = getWriteAddress(vm.memory, 1);
+    vm.memory[dest] = 5;
+    vm.ptr += 2;
+  },
+  output: (vm, { mode1 }) => {
+    console.log(getArg(vm, 1, mode1));
+    vm.ptr += 2;
+  },
+  halt: (vm) => {
+    vm.halted = true;
+  },
 };
 
-const unaryInstruction = {
-  3: { operation: getInput, moveBy: 2 },
-  4: { operation: putOutput, moveBy: 2 },
+const parseInstruction = (vm) => {
+  const instr = getElement(vm.memory, vm.ptr);
+  const modesInt = Math.floor(instr / 100);
+  const opcode = instr % 100;
+  const mode1 = modesInt % 10;
+  const mode2 = Math.floor(modesInt / 10) % 10;
+  const mode3 = Math.floor(modesInt / 100) % 10;
+  return { opcode, mode1, mode2, mode3 };
 };
-
-const jumpIfTrue = (arg1, arg2) => arg1 !== 0 ? arg2 : null;
-const jumpIfFalse = (arg1, arg2) => arg1 === 0 ? arg2 : null;
-
-const movePointerInstruction = {
-  5: jumpIfTrue,
-  6: jumpIfFalse,
-};
-
-const immediateMode = (memory, token) => memory[token];
-const positionMode = (memory, token) => memory[memory[token]];
-
-const parameterMode = {
-  1: immediateMode,
-  0: positionMode,
-};
-
-const parseOpCode = (instruction) => {
-  const opcode = instruction % 100;
-  const arg1Mode = Math.floor(instruction / 100) % 10;
-  const arg2Mode = Math.floor(instruction / 1000) % 10;
-  return { opcode, arg1Mode, arg2Mode };
-};
-
-const parseInstruction = (intCode, cmdPtr) => parseOpCode(intCode[cmdPtr]);
 
 const selectInstruction = {
-  1: { type: "binary", moveBy: 4 },
-  2: { type: "binary", moveBy: 4 },
-  3: { type: "unary", moveBy: 2 },
-  4: { type: "unary", moveBy: 2 },
-  5: { type: "jump", moveBy: 0 },
-  6: { type: "jump", moveBy: 0 },
-  7: { type: "binary", moveBy: 4 },
-  8: { type: "binary", moveBy: 4 },
+  1: handlers.binary,
+  2: handlers.binary,
+  3: handlers.input,
+  4: handlers.output,
+  5: handlers.jump,
+  6: handlers.jump,
+  7: handlers.binary,
+  8: handlers.binary,
+  9: handlers.relBase,
+  99: handlers.halt,
 };
 
 export const intCodeComp = (input) => {
-  const memory = [...input];
-  let cmdPointer = 0;
-  let i = 0;
-  while (cmdPointer < memory.length) {
-    ++i;
-    const { opcode, arg1Mode, arg2Mode } = parseInstruction(memory, cmdPointer);
-
-    if (opcode === 99) {
-      return;
-    }
-    const arg1 = parameterMode[arg1Mode](memory, cmdPointer + 1);
-    const arg2 = parameterMode[arg2Mode](memory, cmdPointer + 2);
-    const instruction = selectInstruction[opcode];
-
-    if (instruction.type === "binary") {
-      const resultIndex = memory[cmdPointer + 3];
-      memory[resultIndex] = binaryInstruction[opcode].operation(arg1, arg2);
-    }
-
-    if (instruction.type === "unary") {
-      const output = unaryInstruction[opcode].operation(memory, cmdPointer + 1);
-      const address = memory[cmdPointer + 1];
-      memory[address] = output;
-    }
-
-    if (instruction.type === "jump") {
-      const jumpTarget = movePointerInstruction[opcode](arg1, arg2);
-      if (jumpTarget !== null) {
-        cmdPointer = jumpTarget;
-      } else {
-        cmdPointer += 3;
-      }
-    }
-
-    cmdPointer += instruction.moveBy;
+  const vm = createVM(input);
+  while (!vm.isHalted) {
+    const data = parseInstruction(vm);
+    const handlers = selectInstruction(data.opcode);
+    handlers(vm, data);
   }
+  return "reached the end";
 };
 
 const parseInput = (input) => input.split(",").map(Number);

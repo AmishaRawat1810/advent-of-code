@@ -23,23 +23,16 @@ const amplification = (instructions) => {
       input: [phase[index]],
       onHalt: false,
     }));
-
     let feedback = 0;
     let ampIndex = 0;
 
     while (!amplifier[4].onHalt) {
-      const currentAmp = amplifier[ampIndex];
-      currentAmp.input.push(feedback);
+      const amp = amplifier[ampIndex];
+      amp.input.push(feedback);
 
-      const result = intCodeComp(
-        currentAmp.memory,
-        currentAmp.input,
-        currentAmp.cmdPtr,
-      );
-
-      currentAmp.cmdPtr = result.cmdPointer;
-      currentAmp.onHalt = result.halted;
-
+      const result = intCodeComp(amp.memory, amp.input, amp.cmdPtr);
+      amp.cmdPtr = result.cmdPointer;
+      amp.onHalt = result.halted;
       if (result.output !== undefined) feedback = result.output;
 
       ampIndex = (ampIndex + 1) % 5;
